@@ -9,22 +9,25 @@ from tensorflow import keras
 
 from environment.Graph import Graph
 from environment.Transition import Transition
-from players.DQN import GRID_SIZE, WINDOW_SIZE
-from players.DQNPlayerAlone import DQNPlayerAlone, convert_data_to_state, NOT_LEGAL_STATE
-
-BAD_REWARD = -0.1
+from players.DQN.DQN import GRID_SIZE, WINDOW_SIZE, TEST_MODE
+from players.DQN.DQNPlayerAlone import convert_data_to_state, NOT_LEGAL_STATE, DQNPlayerAlone
+from players.Random.RandomPlayer import RandomPlayer
+from players.STC.StcPlayer import StcPlayer
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+
+BAD_REWARD = -0.05
+
 random.seed(1997)
 
-TEST_MODE = True
-FITTED_MODEL_GRID_SIZE = 10
+FITTED_MODEL_GRID_SIZE = "stc"
 
 
 def get_reward(all_vertices_visited, timeout, not_visited, graph):
     reward = BAD_REWARD
     if all_vertices_visited:
-        reward += 15 * graph.data.size
+        reward += 5 * graph.data.size
     # elif timeout:
     #     return - GRID_SIZE ** 2
     if not_visited:
@@ -44,19 +47,25 @@ def simulate(graph_dimension_i, graph_dimension_j, num_of_robots, players_list):
         graph.set_visited(location=current_location)
     done = graph.all_vertices_visited()
     while not done:
+        # graph.draw_graph()
         print(iteration_number) if (iteration_number % 100 == 0 and iteration_number > 0 and TEST_MODE) else None
         iteration_number += 1
         state = convert_data_to_state(current_locations[0], graph)
-        while True:
-            player_1_next_location, action = players_list[0].next_move(current_locations[0])
-            if not (players_list[0].dqn.is_fitted() and player_1_next_location == current_locations[0]):
-                break
+        # while True:
+        player_1_next_location, action = players_list[0].next_move(current_locations[0])
+        # if not (players_list[0].dqn.is_fitted() and player_1_next_location == current_locations[0]):
+        #     break
         if player_1_next_location == current_locations[0]:
-            reward = - 1.0 * graph.data.size + BAD_REWARD
+            reward = - 1.1 * graph.data.size + BAD_REWARD
             done = True
             next_state = NOT_LEGAL_STATE
-            players_list[0].dqn.push(Transition(state, action, reward, next_state, done))
-            break
+            if type(players_list[0]) is DQNPlayerAlone:
+                players_list[0].dqn.push(Transition(state, action, reward, next_state, done))
+            if TEST_MODE:
+                done = False
+                continue
+            else:
+                break
 
         next_locations = [player_1_next_location]
         if not graph.is_visited(next_locations[0]):
@@ -67,31 +76,31 @@ def simulate(graph_dimension_i, graph_dimension_j, num_of_robots, players_list):
         graph.set_visited(player_1_next_location)
         next_state = convert_data_to_state(player_1_next_location, graph)
         all_vertices_visited = graph.all_vertices_visited()
-        timeout = iteration_number > GRID_SIZE * 3 * 200 or (time.process_time() - start_time > 500)
+        TIMEOUT_THRESHOLD = 4000 if TEST_MODE else GRID_SIZE * 3 * 100
+        timeout = (iteration_number > TIMEOUT_THRESHOLD) and False
         if timeout:
             print("Timeout!!!")
         # timeout = False
         done = all_vertices_visited or timeout
         reward = get_reward(all_vertices_visited, timeout, not_visited, graph)
-        players_list[0].dqn.push(Transition(state, action, reward, next_state, done))
+        if type(players_list[0]) is DQNPlayerAlone:
+            players_list[0].dqn.push(Transition(state, action, reward, next_state, done))
 
         current_locations = next_locations
-        if iteration_number % 5 == 0:
+        if iteration_number % 5 == 0 and type(players_list[0]) is DQNPlayerAlone:
             players_list[0].dqn.update_model()
     return scores, time.process_time() - start_time, iteration_number
 
 
 if __name__ == "__main__":
-    # devices = tf.config.experimental.list_physical_devices('GPU')
-    # tf.config.experimental.set_memory_growth(devices[0], True)
     now = datetime.now()
     current_time = now.strftime("%H:%M:%S")
     print("Current Time =", current_time)
     model_file = 'rl-' + str(FITTED_MODEL_GRID_SIZE) + 'on' + str(FITTED_MODEL_GRID_SIZE) + '-model' + '.h5'
-    if TEST_MODE:
-        reconstructed_model = keras.models.load_model(model_file)
-    else:
-        reconstructed_model = None
+    # if TEST_MODE:
+    #     reconstructed_model = keras.models.load_model(model_file)
+    # else:
+    reconstructed_model = None
     print("window size: " + str(WINDOW_SIZE) + " with grid size: " + str(GRID_SIZE) + " fitted: " + str(
         reconstructed_model is not None) + " of size: " + str(FITTED_MODEL_GRID_SIZE))
     results = []
@@ -100,9 +109,10 @@ if __name__ == "__main__":
     averages = []
     averages_time = []
     averages_steps = []
-    players_list = [DQNPlayerAlone(grid_size=GRID_SIZE, model=reconstructed_model)]
+    # players_list = [DQNPlayerAlone(grid_size=GRID_SIZE, model=reconstructed_model)]
+    players_list = [StcPlayer()]
     i = 0
-    number_of_runs = 200 if TEST_MODE else 500000
+    number_of_runs = 100 if TEST_MODE else 300
     for i in range(0, number_of_runs):
         scores, total_time, number_of_iterations = simulate(GRID_SIZE, GRID_SIZE, 1, players_list)
         print("Current iteration number: " + str(i) + " coverage is : " + str(scores[0]) + " time: " + str(
@@ -111,18 +121,18 @@ if __name__ == "__main__":
         results.append(scores[0])
         results_time.append(total_time)
         results_steps.append(number_of_iterations)
-
-        average_score1 = np.mean(results[-80:])
-        average_score1_time = np.mean(results_time[-80:])
-        average_score1_steps = np.mean(results_steps[-80:])
+        last_episodes = 100
+        average_score1 = np.mean(results[-last_episodes:])
+        average_score1_time = np.mean(results_time[-last_episodes:])
+        average_score1_steps = np.mean(results_steps[-last_episodes:])
 
         averages += [average_score1]
         averages_time += [average_score1_time]
         averages_steps += [average_score1_steps]
-        if average_score1 == (GRID_SIZE ** 2 ) and not TEST_MODE:
-            break
-
-    if reconstructed_model is None:
+        # if average_score1 == (GRID_SIZE ** 2) and not TEST_MODE:
+        #     break
+    print(averages_steps)
+    if reconstructed_model is None and type(players_list[0]) is DQNPlayerAlone:
         players_list[0].dqn.model.save(model_file)
     if not TEST_MODE:
         axes = plt.axes()
@@ -145,3 +155,6 @@ if __name__ == "__main__":
     plt.plot(averages_steps)
     plt.title("Average iterations per 500 epochs")
     plt.show()
+    import statistics
+
+    print(statistics.mean(results_steps))
