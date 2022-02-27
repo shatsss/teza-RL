@@ -21,7 +21,7 @@ BAD_REWARD = -0.05
 
 random.seed(1997)
 
-FITTED_MODEL_GRID_SIZE = "stc"
+FITTED_MODEL_GRID_SIZE = "5_1_new"
 
 
 def get_reward(all_vertices_visited, timeout, not_visited, graph):
@@ -68,7 +68,7 @@ def simulate(graph_dimension_i, graph_dimension_j, num_of_robots, players_list):
                 break
 
         next_locations = [player_1_next_location]
-        if not graph.is_visited(next_locations[0]):
+        if not graph.is_visited(next_locations[0], players_list[0].id):
             scores[0] += 1
             not_visited = True
         else:
@@ -76,8 +76,8 @@ def simulate(graph_dimension_i, graph_dimension_j, num_of_robots, players_list):
         graph.set_visited(player_1_next_location)
         next_state = convert_data_to_state(player_1_next_location, graph)
         all_vertices_visited = graph.all_vertices_visited()
-        TIMEOUT_THRESHOLD = 4000 if TEST_MODE else GRID_SIZE * 3 * 100
-        timeout = (iteration_number > TIMEOUT_THRESHOLD) and False
+        TIMEOUT_THRESHOLD = 2000 if TEST_MODE else GRID_SIZE * 3 * 100
+        timeout = (iteration_number > TIMEOUT_THRESHOLD) or (time.process_time() - start_time) > 1056
         if timeout:
             print("Timeout!!!")
         # timeout = False
@@ -97,10 +97,10 @@ if __name__ == "__main__":
     current_time = now.strftime("%H:%M:%S")
     print("Current Time =", current_time)
     model_file = 'rl-' + str(FITTED_MODEL_GRID_SIZE) + 'on' + str(FITTED_MODEL_GRID_SIZE) + '-model' + '.h5'
-    # if TEST_MODE:
-    #     reconstructed_model = keras.models.load_model(model_file)
-    # else:
-    reconstructed_model = None
+    if TEST_MODE:
+        reconstructed_model = keras.models.load_model(model_file)
+    else:
+        reconstructed_model = None
     print("window size: " + str(WINDOW_SIZE) + " with grid size: " + str(GRID_SIZE) + " fitted: " + str(
         reconstructed_model is not None) + " of size: " + str(FITTED_MODEL_GRID_SIZE))
     results = []
@@ -109,8 +109,8 @@ if __name__ == "__main__":
     averages = []
     averages_time = []
     averages_steps = []
-    # players_list = [DQNPlayerAlone(grid_size=GRID_SIZE, model=reconstructed_model)]
-    players_list = [StcPlayer()]
+    players_list = [DQNPlayerAlone(grid_size=GRID_SIZE, model=reconstructed_model)]
+    # players_list = [StcPlayer()]
     i = 0
     number_of_runs = 100 if TEST_MODE else 300
     for i in range(0, number_of_runs):

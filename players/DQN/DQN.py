@@ -3,9 +3,9 @@ import random
 import numpy as np
 from tensorflow import keras
 
-GRID_SIZE = 100
+GRID_SIZE = 7
 
-TEST_MODE = True
+TEST_MODE = False
 
 WINDOW_SIZE = 1
 
@@ -14,20 +14,20 @@ class DQN:
 
     def __init__(self, action_space_size, grid_size, model=None):
         self.action_space_size = action_space_size
-        self.min_epsilon = 0.0  # 1
+        self.min_epsilon = 0.001
         if model is not None:
             self.model = model
             self.fitted_model = True
             self.epsilon = self.min_epsilon
         else:
             self.learning_rate = 0.001
-            self.model = self.create_model(grid_size, lr=self.learning_rate)
+            self.model = self.create_model(grid_size, self.learning_rate)
             self.fitted_model = False
             self.epsilon = 1
 
         self.future_factory = 0.99
-        self.batch_size = 256
-        self.memory_size = 100000
+        self.batch_size = 128
+        self.memory_size = 512
         self.memory = []
         self.position = 0
         self.epsilon_decay = 0.9975
@@ -35,11 +35,12 @@ class DQN:
     def is_fitted(self):
         return self.fitted_model
 
-    def create_model(self, grid_size, lr=2e-5):
+    def create_model(self, grid_size, lr):
         model = keras.Sequential()
         model.add(
             keras.layers.Conv2D(4 * grid_size ** 2, (3, 3), padding='same',
-                                input_shape=(WINDOW_SIZE * 2 + 1, WINDOW_SIZE * 2 + 1, 1)))
+                                # input_shape=(WINDOW_SIZE * 2 + 1, WINDOW_SIZE * 2 + 1, 1)))
+                                input_shape=(GRID_SIZE, GRID_SIZE, 1)))
         model.add(keras.layers.LeakyReLU(alpha=0.3))
         model.add(keras.layers.Flatten())
         model.add(keras.layers.Dense(128))
