@@ -1,6 +1,5 @@
 import os
 import random
-import time
 from datetime import datetime
 
 import matplotlib.pyplot as plt
@@ -9,9 +8,9 @@ from tensorflow import keras
 
 from environment.Graph import Graph
 from environment.Transition import Transition
-from players.DQN.DDQNPlayerAlone import DDQNPlayerAlone
 from players.DQN.DQN import GRID_SIZE, WINDOW_SIZE, TEST_MODE
 from players.DQN.DQNPlayerAlone import convert_data_to_state, NOT_LEGAL_STATE, DQNPlayerAlone
+from players.STC.StcPlayer import StcPlayer
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -20,52 +19,42 @@ BAD_REWARD = -0.05
 
 random.seed(1997)
 it_num = 1
-FITTED_MODEL_GRID_SIZE = "5_5"
+FITTED_MODEL_GRID_SIZE = "10_10"
 
 
 def get_reward(all_vertices_visited, timeout, not_visited, graph):
-    # reward = BAD_REWARD
     if all_vertices_visited:
-        return 30 * graph.data.size
-    # elif timeout:
-    #     reward += - 0.1 * graph.data.size
+        return 10 * graph.data[players_list[0].id].size
     if not_visited:
         return 1.0
     else:
-        return -0.5
-    # return reward
+        return BAD_REWARD
 
 
-def simulate(graph_dimension_i, graph_dimension_j, num_of_robots, players_list,it_num):
+def simulate(graph_dimension_i, graph_dimension_j, num_of_robots, players_list, it_num):
     iteration_number = 1
-    start_time = time.process_time()
     graph = Graph(graph_dimension_i, graph_dimension_j)
     for player in players_list:
         player.set_graph(graph)
     scores = np.ones(num_of_robots)
     current_locations = [graph.get_random_cell() for _ in range(num_of_robots)]
     for i, current_location in enumerate(current_locations):
-        graph.set_visited(location=current_location)
+        graph.set_visited(location=current_location, id=players_list[i].id)
     done = graph.all_vertices_visited()
-    # alternate_model = players_list[0].ddqn
     while not done:
         # graph.draw_graph()
         print(iteration_number) if (iteration_number % 100 == 0 and iteration_number > 0 and TEST_MODE) else None
         iteration_number += 1
-        state = convert_data_to_state(current_locations[0], graph)
-        # while True:
+        state = convert_data_to_state(current_locations[0], graph, id=players_list[0].id)
         player_1_next_location, action = players_list[0].next_move(current_locations[0])
-        # if not (players_list[0].dqn.is_fitted() and player_1_next_location == current_locations[0]):
-        #     break
-        TIMEOUT_THRESHOLD = 500 if TEST_MODE else 5000
+        TIMEOUT_THRESHOLD = 2000 if TEST_MODE else 5000
         timeout = (iteration_number > TIMEOUT_THRESHOLD)
         if player_1_next_location == current_locations[0]:
-            # reward = - 1.1 * graph.data.size + BAD_REWARD
-            reward = -100000
+            reward = - 5 * graph.data[players_list[0].id].size
             done = True
             next_state = NOT_LEGAL_STATE
-            # players_list[0].ddqn.push(Transition(state, action, reward, next_state, done))
-            players_list[0].dqn.push(Transition(state, action, reward, next_state, done))
+            if type(players_list[0]) is DQNPlayerAlone:
+                players_list[0].dqn.push(Transition(state, action, reward, next_state, done))
             if TEST_MODE:
                 done = timeout
                 continue
@@ -73,35 +62,32 @@ def simulate(graph_dimension_i, graph_dimension_j, num_of_robots, players_list,i
                 break
 
         next_locations = [player_1_next_location]
-        if not graph.is_visited(next_locations[0]):
+        if not graph.is_visited(next_locations[0], id=players_list[0].id):
             scores[0] += 1
             not_visited = True
         else:
             not_visited = False
-        graph.set_visited(player_1_next_location)
-        next_state = convert_data_to_state(player_1_next_location, graph)
+        graph.set_visited(player_1_next_location, id=players_list[0].id)
+        next_state = convert_data_to_state(player_1_next_location, graph, id=players_list[0].id)
         all_vertices_visited = graph.all_vertices_visited()
 
-
-        # timeout = False
         done = all_vertices_visited or timeout
         reward = get_reward(all_vertices_visited, timeout, not_visited, graph)
         if timeout:
             print("Timeout!!!")
             print(reward)
-        # players_list[0].ddqn.push(Transition(state, action, reward, next_state, done))
-        # if it_num%4==0:
-        players_list[0].dqn.push(Transition(state, action, reward, next_state, done))
+        if type(players_list[0]) is DQNPlayerAlone:
+            players_list[0].dqn.push(Transition(state, action, reward, next_state, done))
 
         current_locations = next_locations
-        if it_num % 10 == 0 and it_num > 1000:
+        if it_num % 10 == 0 and type(players_list[0]) is DQNPlayerAlone:
             players_list[0].dqn.update_model()
             # print(it_num)
         # if it_num % 20 == 0:
         #     players_list[0].ddqn.update_model(alternate_model)
         # if it_num % 200 == 0:
         #     alternate_model = players_list[0].ddqn
-        it_num+=1
+        it_num += 1
     return scores, it_num, iteration_number
 
 
@@ -122,12 +108,12 @@ if __name__ == "__main__":
     results_steps = []
     averages = []
     averages_steps = []
-    players_list = [DQNPlayerAlone(grid_size=GRID_SIZE, model=reconstructed_model)]
-    # players_list = [RandomPlayer()]
+    players_list = [DQNPlayerAlone(id=1, model=reconstructed_model)]
+    # players_list = [StcPlayer(id=1)]
     i = 0
-    number_of_runs = 50 if TEST_MODE else 1000000
+    number_of_runs = 50 if TEST_MODE else 700
     for i in range(0, number_of_runs):
-        scores, it_num, number_of_iterations = simulate(GRID_SIZE, GRID_SIZE, 1, players_list,it_num)
+        scores, it_num, number_of_iterations = simulate(GRID_SIZE, GRID_SIZE, 1, players_list, it_num)
         print("Current iteration number: " + str(i) + " coverage is : " + str(scores[0]) + " it_num: " + str(
             it_num) + " number of total iterations: " + str(number_of_iterations))
         i += 1

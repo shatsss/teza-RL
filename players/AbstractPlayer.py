@@ -4,7 +4,7 @@ from environment.Graph import Graph
 
 
 class AbstractPlayer(ABC):
-    def __init__(self, id=None):
+    def __init__(self, id):
         self.id = id
         self.graph: Graph = None
 

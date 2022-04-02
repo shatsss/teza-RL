@@ -11,8 +11,6 @@ from environment.Graph import Graph
 from environment.Transition import Transition
 from players.DQN.DQN import GRID_SIZE, WINDOW_SIZE, TEST_MODE
 from players.DQN.DQNPlayerAlone import convert_data_to_state, NOT_LEGAL_STATE, DQNPlayerAlone
-from players.Random.RandomPlayer import RandomPlayer
-from players.STC.StcPlayer import StcPlayer
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -21,18 +19,17 @@ BAD_REWARD = -0.05
 
 random.seed(1997)
 
-FITTED_MODEL_GRID_SIZE = "5_1_new"
+# FITTED_MODEL_GRID_SIZE = "10_1_alone"
+FITTED_MODEL_GRID_SIZE = "10_2_DQN_opponent_more_epochs"
 
 
-def get_reward(all_vertices_visited, timeout, not_visited, graph):
-    reward = BAD_REWARD
+def get_reward(all_vertices_visited, not_visited, graph):
     if all_vertices_visited:
-        reward += 5 * graph.data.size
-    # elif timeout:
-    #     return - GRID_SIZE ** 2
-    if not_visited:
-        reward += 1.0
-    return reward
+        return 2.0 * graph.data[players_list[0].id].size
+    elif not_visited:
+        return 1.0
+    else:
+        return BAD_REWARD
 
 
 def simulate(graph_dimension_i, graph_dimension_j, num_of_robots, players_list):
@@ -44,28 +41,27 @@ def simulate(graph_dimension_i, graph_dimension_j, num_of_robots, players_list):
     scores = np.ones(num_of_robots)
     current_locations = [graph.get_random_cell() for _ in range(num_of_robots)]
     for i, current_location in enumerate(current_locations):
-        graph.set_visited(location=current_location)
+        graph.set_visited(location=current_location, id=players_list[i].id)
     done = graph.all_vertices_visited()
     while not done:
-        # graph.draw_graph()
+        # graph.draw_graph(current_locations[1], current_locations[0])
         print(iteration_number) if (iteration_number % 100 == 0 and iteration_number > 0 and TEST_MODE) else None
-        iteration_number += 1
         state = convert_data_to_state(current_locations[0], graph)
-        # while True:
         player_1_next_location, action = players_list[0].next_move(current_locations[0])
-        # if not (players_list[0].dqn.is_fitted() and player_1_next_location == current_locations[0]):
-        #     break
+        TIMEOUT_THRESHOLD = 500 if TEST_MODE else 5000
+        timeout = (iteration_number > TIMEOUT_THRESHOLD)
+        if timeout:
+            iteration_number = TIMEOUT_THRESHOLD
+            break
         if player_1_next_location == current_locations[0]:
-            reward = - 1.1 * graph.data.size + BAD_REWARD
+            reward = - 1.1 * graph.data[players_list[0].id].size
             done = True
             next_state = NOT_LEGAL_STATE
             if type(players_list[0]) is DQNPlayerAlone:
                 players_list[0].dqn.push(Transition(state, action, reward, next_state, done))
-            if TEST_MODE:
-                done = False
-                continue
-            else:
-                break
+                iteration_number = TIMEOUT_THRESHOLD
+
+            break
 
         next_locations = [player_1_next_location]
         if not graph.is_visited(next_locations[0], players_list[0].id):
@@ -73,22 +69,19 @@ def simulate(graph_dimension_i, graph_dimension_j, num_of_robots, players_list):
             not_visited = True
         else:
             not_visited = False
-        graph.set_visited(player_1_next_location)
+        graph.set_visited(player_1_next_location, players_list[0].id)
         next_state = convert_data_to_state(player_1_next_location, graph)
         all_vertices_visited = graph.all_vertices_visited()
-        TIMEOUT_THRESHOLD = 2000 if TEST_MODE else GRID_SIZE * 3 * 100
-        timeout = (iteration_number > TIMEOUT_THRESHOLD) or (time.process_time() - start_time) > 1056
-        if timeout:
-            print("Timeout!!!")
-        # timeout = False
         done = all_vertices_visited or timeout
-        reward = get_reward(all_vertices_visited, timeout, not_visited, graph)
+        reward = get_reward(all_vertices_visited, not_visited, graph)
         if type(players_list[0]) is DQNPlayerAlone:
             players_list[0].dqn.push(Transition(state, action, reward, next_state, done))
 
         current_locations = next_locations
-        if iteration_number % 5 == 0 and type(players_list[0]) is DQNPlayerAlone:
+        if iteration_number % 10 == 0 and type(players_list[0]) is DQNPlayerAlone:
             players_list[0].dqn.update_model()
+        iteration_number += 1
+
     return scores, time.process_time() - start_time, iteration_number
 
 
@@ -109,10 +102,10 @@ if __name__ == "__main__":
     averages = []
     averages_time = []
     averages_steps = []
-    players_list = [DQNPlayerAlone(grid_size=GRID_SIZE, model=reconstructed_model)]
+    players_list = [DQNPlayerAlone(id=2, model=reconstructed_model)]
     # players_list = [StcPlayer()]
     i = 0
-    number_of_runs = 100 if TEST_MODE else 300
+    number_of_runs = 150 if TEST_MODE else 2500
     for i in range(0, number_of_runs):
         scores, total_time, number_of_iterations = simulate(GRID_SIZE, GRID_SIZE, 1, players_list)
         print("Current iteration number: " + str(i) + " coverage is : " + str(scores[0]) + " time: " + str(

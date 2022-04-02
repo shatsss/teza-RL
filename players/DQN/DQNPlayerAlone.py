@@ -1,28 +1,37 @@
 import numpy as np
 
 from players.AbstractPlayer import AbstractPlayer
-from players.DQN.DQN import DQN, WINDOW_SIZE, GRID_SIZE
+from players.DQN.DQN import DQN, GRID_SIZE, WINDOW_SIZE
 
-NOT_LEGAL_STATE = np.expand_dims(np.full((GRID_SIZE,GRID_SIZE), -1), axis=2)
-# NOT_LEGAL_STATE = np.expand_dims(np.full((WINDOW_SIZE * 2 + 1, WINDOW_SIZE * 2 + 1), -1), axis=2)
+# NOT_LEGAL_STATE = np.expand_dims(np.full((GRID_SIZE, GRID_SIZE), -1), axis=2)
+#
+#
+NOT_LEGAL_STATE = np.expand_dims(np.full((WINDOW_SIZE * 2 + 1, WINDOW_SIZE * 2 + 1), -1), axis=2)
 
 
-# def convert_data_to_state(current_location, graph):
-#     world = np.copy(graph.data)
-#     world[current_location[0], current_location[1]] = 2
-#     sub_world = np.zeros((WINDOW_SIZE * 2 + 1, WINDOW_SIZE * 2 + 1))
-#     for i in range(current_location[0] - WINDOW_SIZE, current_location[0] + WINDOW_SIZE + 1):
-#         for j in range(current_location[1] - WINDOW_SIZE, current_location[1] + WINDOW_SIZE + 1):
-#             if not (legal_location(i) and legal_location(j)):
-#                 sub_world[i - (current_location[0] - WINDOW_SIZE), j - (current_location[1] - WINDOW_SIZE)] = -1
-#             else:
-#                 sub_world[i - (current_location[0] - WINDOW_SIZE), j - (current_location[1] - WINDOW_SIZE)] = world[
-#                     i, j]
-#     return np.expand_dims(sub_world, axis=2)
 def convert_data_to_state(current_location, graph):
-    world = np.copy(graph.data)
-    world[current_location[0], current_location[1]] = 10
-    return np.expand_dims(world, axis=2)
+    world = np.copy(graph.get_combined_values_matrix())
+    # set all values to 1 if we visited these cells
+    for i in range(world.size):
+        value = 1 if world.item(i) > 0 else 0
+        world.itemset(i, value)
+    world[current_location[0], current_location[1]] = 20
+    # return np.expand_dims(world, axis=2)
+    sub_world = np.zeros((WINDOW_SIZE * 2 + 1, WINDOW_SIZE * 2 + 1))
+    for i in range(current_location[0] - WINDOW_SIZE, current_location[0] + WINDOW_SIZE + 1):
+        for j in range(current_location[1] - WINDOW_SIZE, current_location[1] + WINDOW_SIZE + 1):
+            if not (legal_location(i) and legal_location(j)):
+                sub_world[i - (current_location[0] - WINDOW_SIZE), j - (current_location[1] - WINDOW_SIZE)] = -1
+            else:
+                sub_world[i - (current_location[0] - WINDOW_SIZE), j - (current_location[1] - WINDOW_SIZE)] = world[
+                    i, j]
+    return np.expand_dims(sub_world, axis=2)
+
+
+# def convert_data_to_state(current_location, graph, id):
+#     world = np.copy(graph.data[id])
+#     world[current_location[0], current_location[1]] = 10
+#     return np.expand_dims(world, axis=2)
 
 
 def legal_location(location):
@@ -30,9 +39,9 @@ def legal_location(location):
 
 
 class DQNPlayerAlone(AbstractPlayer):
-    def __init__(self, grid_size, model=None):
-        super().__init__()
-        self.dqn = DQN(4, grid_size, model=model)
+    def __init__(self, id, model=None):
+        super().__init__(id)
+        self.dqn = DQN(4, model=model)
 
     def next_move(self, current_location):
         state = convert_data_to_state(current_location, self.graph)
