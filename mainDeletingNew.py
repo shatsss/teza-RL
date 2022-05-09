@@ -9,103 +9,73 @@ from tensorflow import keras
 from environment.Graph import Graph
 from environment.Transition import Transition
 from players.DQN.DQN import GRID_SIZE, WINDOW_SIZE, TEST_MODE
-from players.DQN.DqnPlayer import convert_data_to_state, NOT_LEGAL_STATE, DQNPlayer, get_sub_world
+from players.DQN.DqnPlayer import convert_data_to_state, NOT_LEGAL_STATE, DQNPlayer
 from players.STC.StcPlayer import StcPlayer
+from players.STC.StcPlayerWithDeletingPheromones import StcPlayerWithDeletingPheromones
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
-BAD_REWARD = -0.25
-GOOD_REWARD = 0.05
+BAD_REWARD = -0.5
 
 random.seed(1997)
 it_num = 2
-# FITTED_MODEL_GRID_SIZE = "14_1_DQN_opponent_same_pheromones"
-# FITTED_MODEL_GRID_SIZE = "14_1_DQN_opponent"
+FITTED_MODEL_GRID_SIZE = "6_2_deleting_pheromones_new_different_grade"
 
 
-FITTED_MODEL_GRID_SIZE = "10_2_grade_positive_opponent_cells"
+# FITTED_MODEL_GRID_SIZE = "14_2_DQN_opponent"
 
 
-# def calc_distance_from_opponent(my_location, graph):
-#     world = np.copy(graph.get_combined_values_matrix())
-#     sub_world = get_sub_world(my_location, world)
-#     min_distance = graph.grid_size ** 2
-#     for i in range(WINDOW_SIZE * 2 + 1):
-#         for j in range(WINDOW_SIZE * 2 + 1):
-#             if sub_world.data[i, j] > 0 and sub_world.data[i, j] != 2:
-#                 distance = abs(WINDOW_SIZE - i) + abs(WINDOW_SIZE - j)
-#                 if distance < min_distance:
-#                     min_distance = distance
-#     return min_distance
+# FITTED_MODEL_GRID_SIZE = "10_1_alone"
 
-
-def how_many_cells_visited_in_percent(my_location, graph, id=None):
-    world = np.copy(graph.get_combined_values_matrix())
-    sub_world = get_sub_world(my_location, world)
-    sum = 0
-    for i in range(WINDOW_SIZE * 2 + 1):
-        for j in range(WINDOW_SIZE * 2 + 1):
-            if sub_world.data[i, j] > 0 and (sub_world.data[i, j] == 3 or sub_world.data[i, j] == id):
-            # if sub_world.data[i, j] > 0:
-                sum += 1
-    return sum / ((WINDOW_SIZE * 2 + 1) ** 2)
-
-
-def get_reward(all_vertices_visited, not_visited, scores, current_location, graph):
+def get_reward(all_vertices_visited, scores, visited_by_me_my_next_location, visited_by_opponent_my_next_location, how_many_cells_visited):
     if all_vertices_visited:
+        # return 5.0 * scores[1]
         return 2.0 * scores[1]
-    # positive - without 1-, negative - with 1-
-    cells_visited_in_percent = how_many_cells_visited_in_percent(current_location, graph, id=1)
-    if not_visited:
-        return 1 + cells_visited_in_percent
+    elif (not visited_by_me_my_next_location) and (not visited_by_opponent_my_next_location):
+        return 1
+    elif (not visited_by_opponent_my_next_location) and visited_by_me_my_next_location:
+        return BAD_REWARD
+    elif visited_by_opponent_my_next_location:
+        # return 2
+        return 0.5
+    # elif (not visited_by_me_my_next_location) and visited_by_opponent_my_next_location:
+    #     return 0.2
+    # elif visited_by_opponent_my_next_location and visited_by_me_my_next_location:
+    #     return 0.2
     else:
-        return BAD_REWARD - (1 - cells_visited_in_percent)
+        raise Exception("Error in calculating the reward value")
 
 
-# def reward_from_cell(not_visited, distance_from_opponent):
-#     close = False
-#     if distance_from_opponent == 0:
-#         reward = 0.5
-#     else:
-#         reward = (1 / distance_from_opponent) - BAD_REWARD
-#     if not_visited:
-#         if close:
-#             return 1.0 + reward
-#         else:
-#             return 1.0 + (0.5 - reward)
-#     else:
-#         if close:
-#             return BAD_REWARD - (0.5 - reward)
-#         else:
-#             return BAD_REWARD - reward
-
-
-def simulate(graph_dimension_i, players_list, it_num):
+def simulate(graph_dimension_i, graph_dimension_j, players_list, it_num, should_draw=False):
     iteration_number = 1
-    graph = Graph(graph_dimension_i)
+    graph = Graph(graph_dimension_i, graph_dimension_j)
     for player in players_list:
         player.set_graph(graph)
     num_of_robots = len(players_list)
     scores = np.ones(num_of_robots)
     current_locations = [graph.get_random_cell() for _ in range(num_of_robots)]
+    if current_locations[0] == current_locations[1]:
+        scores -= 0.5
     for i, current_location in enumerate(current_locations):
         graph.set_visited(location=current_location, id=players_list[i].id)
     done = graph.all_vertices_visited()
     while not done:
-        # if iteration_number >99:
-        #     graph.draw_graph(current_locations[1], current_locations[0])
+        if should_draw:
+            graph.draw_graph(current_locations[1], current_locations[0])
         print(iteration_number) if (iteration_number % 100 == 0 and iteration_number > 0 and TEST_MODE) else None
         iteration_number += 1
         state = convert_data_to_state(current_locations[1], current_locations[0], graph)
         player_0_next_location, _ = players_list[0].next_move(current_locations[0])
+        # if type(player_0_next_location)==int:
+        #     players_list[0].next_move(current_locations[0])
         player_1_next_location, action = players_list[1].next_move(current_locations[1], current_locations[0])
-        TIMEOUT_THRESHOLD = 500 if TEST_MODE else 5000
+        TIMEOUT_THRESHOLD = 3000 if TEST_MODE else 5000
         timeout = (iteration_number > TIMEOUT_THRESHOLD)
         if timeout:
             break
         if player_1_next_location == current_locations[1]:
-            reward = - 1.1 * graph.data[players_list[1].id].size
+            reward = - 2 * graph.data[players_list[1].id].size
             done = True
             next_state = NOT_LEGAL_STATE
             if type(players_list[1]) is DQNPlayer:
@@ -114,25 +84,45 @@ def simulate(graph_dimension_i, players_list, it_num):
                 iteration_number = TIMEOUT_THRESHOLD
             break
 
-        not_visited = False
+        visited_by_me_my_next_location = True
+        visited_by_opponent_my_next_location = True
         next_locations = [player_0_next_location, player_1_next_location]
         if player_0_next_location == player_1_next_location and not graph.is_visited_by_any_robot(
                 player_0_next_location):
             scores[0] += 0.5
             scores[1] += 0.5
-            not_visited = True
+            visited_by_me_my_next_location = False
+            visited_by_opponent_my_next_location = False
         else:
             if not graph.is_visited_by_any_robot(next_locations[0]):
                 scores[0] += 1
             if not graph.is_visited_by_any_robot(next_locations[1]):
                 scores[1] += 1
-                not_visited = True
+            visited_value_of_my_next_cell = graph.get_visited_value_of_cell(next_locations[1])
+            if visited_value_of_my_next_cell == 1:
+                visited_by_me_my_next_location = False
+            elif visited_value_of_my_next_cell == 2:
+                visited_by_opponent_my_next_location = False
+            elif visited_value_of_my_next_cell == 7:
+                visited_by_opponent_my_next_location = False
+            elif visited_value_of_my_next_cell == 0:
+                visited_by_opponent_my_next_location = False
+                visited_by_me_my_next_location = False
+            elif visited_value_of_my_next_cell == 3:
+                pass
+            else:
+                raise Exception()
+        if visited_by_opponent_my_next_location:
+            graph.delete_opponent_pheromone(location=player_1_next_location, id=players_list[0].get_id())
         graph.set_visited(player_0_next_location, players_list[0].get_id())
         graph.set_visited(player_1_next_location, players_list[1].get_id())
         next_state = convert_data_to_state(player_1_next_location, player_0_next_location, graph)
         all_vertices_visited = graph.all_vertices_visited()
         done = all_vertices_visited
-        reward = get_reward(all_vertices_visited, not_visited, scores, player_1_next_location, graph)
+        cells_of_big_node = StcPlayer.get_cells_of_big_node(player_1_next_location)
+        how_many_cells_visited = len([graph.is_visited_by_any_robot(cell) for cell in cells_of_big_node])
+        reward = get_reward(all_vertices_visited, scores, visited_by_me_my_next_location,
+                            visited_by_opponent_my_next_location, how_many_cells_visited)
         # if timeout:
         #     print("Timeout!!!")
         if type(players_list[1]) is DQNPlayer:
@@ -161,18 +151,20 @@ if __name__ == "__main__":
     results_steps = []
     averages = []
     averages_steps = []
-    players_list = [StcPlayer(id=1), DQNPlayer(id=2, model=reconstructed_model)]
+    players_list = [StcPlayerWithDeletingPheromones(id=1), DQNPlayer(id=2, model=reconstructed_model)]
     # players_list = [StcPlayer(id=1)]
     i = 0
     number_of_wins = 0
     number_of_draws = 0
     number_of_loses = 0
-    number_of_runs = 500 if TEST_MODE else 7500
+    number_of_runs = 1000 if TEST_MODE else 5000
     for i in range(0, number_of_runs):
-        scores, it_num, number_of_iterations = simulate(GRID_SIZE, players_list, it_num)
-        while (TEST_MODE and number_of_iterations == 500):
-            scores, it_num, number_of_iterations = simulate(GRID_SIZE, players_list, it_num)
-
+        if i > number_of_runs:
+            should_draw = True
+        else:
+            should_draw = False
+        scores, it_num, number_of_iterations = simulate(GRID_SIZE, GRID_SIZE, players_list, it_num,
+                                                        should_draw=should_draw)
         print("Current iteration number: " + str(i) + " coverage is : " + str(scores[1]) + " opponent coverage: " + str(
             scores[0]) + " number of total iterations: " + str(number_of_iterations))
         if scores[0] < scores[1]:

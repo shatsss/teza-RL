@@ -19,7 +19,8 @@ BAD_REWARD = -0.5
 
 random.seed(1997)
 it_num = 2
-FITTED_MODEL_GRID_SIZE = "14_1_deleting_pheromones"
+# FITTED_MODEL_GRID_SIZE = "6_2_deleting_pheromones"
+FITTED_MODEL_GRID_SIZE = "10_2_deleting_pheromones_grade_according_to_grid_size"
 
 
 # FITTED_MODEL_GRID_SIZE = "14_2_DQN_opponent"
@@ -27,19 +28,15 @@ FITTED_MODEL_GRID_SIZE = "14_1_deleting_pheromones"
 
 # FITTED_MODEL_GRID_SIZE = "10_1_alone"
 
-def get_reward(all_vertices_visited, scores, visited_by_me_my_next_location, visited_by_opponent_my_next_location):
+def get_reward(all_vertices_visited, scores, visited_by_me_my_next_location, visited_by_opponent_my_next_location, grid_size):
     if all_vertices_visited:
-        return 2.0 * scores[1]
+        return 5.0 * scores[1]
     elif (not visited_by_me_my_next_location) and (not visited_by_opponent_my_next_location):
-        return 1
+        return grid_size/5
     elif (not visited_by_opponent_my_next_location) and visited_by_me_my_next_location:
         return BAD_REWARD
     elif visited_by_opponent_my_next_location:
-        return 0.5
-    # elif (not visited_by_me_my_next_location) and visited_by_opponent_my_next_location:
-    #     return 0.2
-    # elif visited_by_opponent_my_next_location and visited_by_me_my_next_location:
-    #     return 0.2
+        return 1
     else:
         raise Exception("Error in calculating the reward value")
 
@@ -67,7 +64,7 @@ def simulate(graph_dimension_i, graph_dimension_j, players_list, it_num, should_
         # if type(player_0_next_location)==int:
         #     players_list[0].next_move(current_locations[0])
         player_1_next_location, action = players_list[1].next_move(current_locations[1], current_locations[0])
-        TIMEOUT_THRESHOLD = 1500 if TEST_MODE else 5000
+        TIMEOUT_THRESHOLD = 3000 if TEST_MODE else 5000
         timeout = (iteration_number > TIMEOUT_THRESHOLD)
         if timeout:
             break
@@ -117,7 +114,7 @@ def simulate(graph_dimension_i, graph_dimension_j, players_list, it_num, should_
         all_vertices_visited = graph.all_vertices_visited()
         done = all_vertices_visited
         reward = get_reward(all_vertices_visited, scores, visited_by_me_my_next_location,
-                            visited_by_opponent_my_next_location)
+                            visited_by_opponent_my_next_location, grid_size=graph.grid_size)
         # if timeout:
         #     print("Timeout!!!")
         if type(players_list[1]) is DQNPlayer:
@@ -152,7 +149,7 @@ if __name__ == "__main__":
     number_of_wins = 0
     number_of_draws = 0
     number_of_loses = 0
-    number_of_runs = 1000 if TEST_MODE else 7500
+    number_of_runs = 500 if TEST_MODE else 5000
     for i in range(0, number_of_runs):
         if i > number_of_runs:
             should_draw = True

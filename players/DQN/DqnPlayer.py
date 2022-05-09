@@ -18,6 +18,11 @@ def convert_data_to_state(current_location, opponent_location, graph):
     world[current_location[0], current_location[1]] = 20
     world[opponent_location[0], opponent_location[1]] = 10
     # return np.expand_dims(world, axis=2)
+    sub_world = get_sub_world(current_location, world)
+    return np.expand_dims(sub_world, axis=2)
+
+
+def get_sub_world(current_location, world):
     sub_world = np.zeros((WINDOW_SIZE * 2 + 1, WINDOW_SIZE * 2 + 1))
     for i in range(current_location[0] - WINDOW_SIZE, current_location[0] + WINDOW_SIZE + 1):
         for j in range(current_location[1] - WINDOW_SIZE, current_location[1] + WINDOW_SIZE + 1):
@@ -26,7 +31,7 @@ def convert_data_to_state(current_location, opponent_location, graph):
             else:
                 sub_world[i - (current_location[0] - WINDOW_SIZE), j - (current_location[1] - WINDOW_SIZE)] = world[
                     i, j]
-    return np.expand_dims(sub_world, axis=2)
+    return sub_world
 
 
 def legal_location(location):

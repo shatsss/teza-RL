@@ -3,10 +3,10 @@ import random
 import numpy as np
 from tensorflow import keras
 
-GRID_SIZE = 14
-TEST_MODE = False
+GRID_SIZE = 6
+TEST_MODE = True
 
-WINDOW_SIZE = 1
+WINDOW_SIZE = 2
 
 
 class DQN:
