@@ -42,6 +42,7 @@ def get_reward(all_vertices_visited, scores, visited_by_me_my_next_location, vis
 
 
 def simulate(graph_dimension_i, graph_dimension_j, players_list, it_num, should_draw=False):
+    should_draw=True
     iteration_number = 1
     graph = Graph(graph_dimension_i, graph_dimension_j)
     for player in players_list:

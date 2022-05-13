@@ -3,8 +3,8 @@ import random
 import numpy as np
 from tensorflow import keras
 
-GRID_SIZE = 6
-TEST_MODE = True
+GRID_SIZE = 10
+TEST_MODE = False
 
 WINDOW_SIZE = 2
 
@@ -25,7 +25,7 @@ class DQN:
             self.epsilon = 1
 
         self.future_factory = 0.99
-        self.batch_size = 256
+        self.batch_size = 128
         self.memory_size = 100000
         self.memory = []
         self.position = 0

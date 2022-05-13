@@ -185,11 +185,12 @@ plt.show()
 # Number of draws: 0.02
 
 
-data = [[75, 72], [81.5, 75], [0, 83], [0, 80],  [0, 90], [0, 85]]
+data = [[75, 72], [81.5, 75], [0, 83], [0, 80],  [0, 90], [0, 85],[0,89]]
 x = ['14_1', '14_2']
 y = ['opponent', 'same pheromones',
      'close-to-opponent-6', 'far-from-opponent-6',
       'close-to-opponent-10', 'far-from-opponent-10',
+     "10_2_grade_positive_opponent_cells"
      ]
 plt.title('14 opponent coverage')
 # plt.xlabel('alone')
@@ -198,7 +199,7 @@ plt.imshow(data, interpolation='none')
 plt.xticks(range(len(x)), x, fontsize=12)
 plt.yticks(range(len(y)), y, fontsize=12)
 for i in range(2):
-    for j in range(6):
+    for j in range(7):
         c = data[j][i]
         plt.text(i, j, str(c), va='center', ha='center')
 plt.colorbar()
@@ -207,11 +208,12 @@ plt.show()
 
 # number of wins
 data = [[0.121, 0.041], [0.258, 0.223],  [0, 0.15], [0, 0.072],
-        [0, 0.352], [0, 0.136]]
+        [0, 0.352], [0, 0.136], [0, 0.285]]
 x = ['14_1', '14_2']
 y = ['opponent', 'same-pheromones',
      'close-to-opponent-6', 'far-from-opponent-6',
      'close-to-opponent-10', 'far-from-opponent-10',
+     "10_2_grade_positive_opponent_cells"
      ]
 plt.title('14 opponent wins')
 # plt.xlabel('alone')
@@ -220,7 +222,7 @@ plt.imshow(data, interpolation='none')
 plt.xticks(range(len(x)), x, fontsize=12)
 plt.yticks(range(len(y)), y, fontsize=12)
 for i in range(2):
-    for j in range(6):
+    for j in range(7):
         c = data[j][i]
         plt.text(i, j, str(c), va='center', ha='center')
 plt.colorbar()
@@ -228,6 +230,10 @@ plt.legend()
 plt.show()
 
 # grid size 14
+# 10_2_grade_positive_opponent_cells
+# Number of wins: 0.285
+# Number of loses: 0.695
+# Number of draws: 0.02
 # 6_2_deleting_pheromones_grade_according_to_grid_size
 # Number of wins: 0.394
 # Number of loses: 0.588
@@ -290,9 +296,9 @@ plt.show()
 # Number of draws: 0.027
 
 
-data = [[0, 160], [0, 160], [0, 160]]
+data = [[0, 160], [0, 160], [0, 160], [0,140]]
 x = ['20_1', '20_2']
-y = ['6_deleting_pheromones', '10_deleting_pheromones', '14_deleting_pheromones']
+y = ['6_deleting_pheromones', '10_deleting_pheromones', '14_deleting_pheromones','10_2_grade_positive_opponent_cells']
 plt.title('20 opponent coverage')
 # plt.xlabel('alone')
 # plt.ylabel('opponent')
@@ -300,7 +306,7 @@ plt.imshow(data, interpolation='none')
 plt.xticks(range(len(x)), x, fontsize=12)
 plt.yticks(range(len(y)), y, fontsize=12)
 for i in range(2):
-    for j in range(3):
+    for j in range(4):
         c = data[j][i]
         plt.text(i, j, str(c), va='center', ha='center')
 plt.colorbar()
@@ -308,9 +314,9 @@ plt.legend()
 plt.show()
 
 # number of wins
-data = [[0, 0.055], [0, 0.168], [0, 0.132]]
+data = [[0, 0.055], [0, 0.168], [0, 0.132], [0,0.04]]
 x = ['20_1', '20_2']
-y = ['6_deleting_pheromones', '10_deleting_pheromones', '14_deleting_pheromones']
+y = ['6_deleting_pheromones', '10_deleting_pheromones', '14_deleting_pheromones', '10_2_grade_positive_opponent_cells']
 plt.title('20 opponent wins')
 # plt.xlabel('alone')
 # plt.ylabel('opponent')
@@ -318,13 +324,17 @@ plt.imshow(data, interpolation='none')
 plt.xticks(range(len(x)), x, fontsize=12)
 plt.yticks(range(len(y)), y, fontsize=12)
 for i in range(2):
-    for j in range(3):
+    for j in range(4):
         c = data[j][i]
         plt.text(i, j, str(c), va='center', ha='center')
 plt.colorbar()
 plt.legend()
 plt.show()
 ######### 20
+# 10_2_grade_positive_opponent_cells
+# Number of wins: 0.04
+# Number of loses: 0.96
+# Number of draws: 0.0
 # 14_2_deleting_pheromones
 # Number of wins: 0.132
 # Number of loses: 0.862
