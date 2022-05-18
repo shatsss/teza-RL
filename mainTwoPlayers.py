@@ -15,7 +15,7 @@ from players.STC.StcPlayer import StcPlayer
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
-BAD_REWARD = -0.5
+BAD_REWARD = -0.25
 GOOD_REWARD = 0.05
 
 random.seed(1997)
@@ -24,7 +24,10 @@ it_num = 2
 # FITTED_MODEL_GRID_SIZE = "14_1_DQN_opponent"
 
 
-FITTED_MODEL_GRID_SIZE = "10_2_grade_positive_positive_cells"
+# FITTED_MODEL_GRID_SIZE = "10_2_grade_positive_better_empty_cells"
+# FITTED_MODEL_GRID_SIZE = "10_2_grade_positive_better_visited_opponent_cells"
+
+FITTED_MODEL_GRID_SIZE = "10_2_grade_positive_positive_3_cells"
 
 
 # def calc_distance_from_opponent(my_location, graph):
@@ -47,7 +50,7 @@ def how_many_cells_visited_in_percent(my_location, graph, id=None):
     for i in range(WINDOW_SIZE * 2 + 1):
         for j in range(WINDOW_SIZE * 2 + 1):
             if sub_world.data[i, j] == 3 or sub_world.data[i, j] == id:
-            # if sub_world.data[i, j] > 0:
+                # if sub_world.data[i, j] > 0:
                 sum += 1
     return sum / ((WINDOW_SIZE * 2 + 1) ** 2)
 
@@ -67,12 +70,22 @@ def get_reward(all_vertices_visited, not_visited, scores, current_location, grap
     if all_vertices_visited:
         return 2.0 * scores[1]
     # positive - without 1-, negative - with 1-
-    cells_visited_in_percent = how_many_cells_visited_in_percent(current_location, graph, id=1)
+    # cells_visited_in_percent = how_many_cells_visited_in_percent(current_location, graph, id=1)
     cells_empty_in_percent = how_many_cells_are_empty(current_location, graph)
     if not_visited:
-        return 2 + cells_visited_in_percent + cells_empty_in_percent
+        return 1 + cells_empty_in_percent
     else:
-        return BAD_REWARD - (1 - cells_visited_in_percent)
+        return BAD_REWARD - (1 - cells_empty_in_percent)
+    # if not_visited:
+    #     # return 1 + cells_visited_in_percent + 2*cells_empty_in_percent
+    #     return 1 + 2*cells_visited_in_percent + cells_empty_in_percent
+    # else:
+    #     return BAD_REWARD - (3-(2*cells_visited_in_percent+ cells_empty_in_percent))
+    #
+    # if not_visited:
+    #     return 2 + cells_visited_in_percent + cells_empty_in_percent
+    # else:
+    #     return BAD_REWARD - (2-(cells_visited_in_percent+ cells_empty_in_percent))
 
 
 # def reward_from_cell(not_visited, distance_from_opponent):
@@ -179,7 +192,7 @@ if __name__ == "__main__":
     number_of_wins = 0
     number_of_draws = 0
     number_of_loses = 0
-    number_of_runs = 200 if TEST_MODE else 5000
+    number_of_runs = 500 if TEST_MODE else 5000
     for i in range(0, number_of_runs):
         scores, it_num, number_of_iterations = simulate(GRID_SIZE, players_list, it_num)
         while (TEST_MODE and number_of_iterations == 500):

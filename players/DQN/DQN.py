@@ -3,8 +3,8 @@ import random
 import numpy as np
 from tensorflow import keras
 
-GRID_SIZE = 10
-TEST_MODE = False
+GRID_SIZE = 20
+TEST_MODE = True
 
 WINDOW_SIZE = 2
 

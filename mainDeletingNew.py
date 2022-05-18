@@ -84,6 +84,7 @@ def simulate(graph_dimension_i, graph_dimension_j, players_list, it_num, should_
                 iteration_number = TIMEOUT_THRESHOLD
             break
 
+
         visited_by_me_my_next_location = True
         visited_by_opponent_my_next_location = True
         next_locations = [player_0_next_location, player_1_next_location]
